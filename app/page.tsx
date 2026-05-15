@@ -19,7 +19,8 @@ export default function Home() {
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
   const [history, setHistory] = useState<any[]>([]);
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
+const [password, setPassword] = useState("");
 const [logged, setLogged] = useState(false);
 
   const totalPoints = history.reduce(
@@ -156,17 +157,20 @@ async function getHistory() {
 
 }
 
-function login() {
+async function login() {
 
-  if (password === "crownblade123") {
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-    localStorage.setItem("logged", "true");
+  if (error) {
 
-    setLogged(true);
+    alert("Credenciales incorrectas");
 
   } else {
 
-    alert("Contraseña incorrecta");
+    setLogged(true);
 
   }
 
@@ -174,11 +178,11 @@ function login() {
 
 useEffect(() => {
 
-  const savedLogin = localStorage.getItem("logged");
-
-  if (savedLogin === "true") {
+  supabase.auth.getSession().then(({ data }) => {
+  if (data.session) {
     setLogged(true);
   }
+});
 
   getClients();
   getHistory();
@@ -210,14 +214,33 @@ useEffect(() => {
       }}>
 
         <h1 style={{
-          color: "white",
-          fontSize: 32,
-          fontWeight: "bold",
-          textAlign: "center"
-        }}>
-          Crown & Blade
-        </h1>
+  color: "white",
+  fontSize: 32,
+  fontWeight: "bold",
+  textAlign: "center"
+}}>
+  Crown & Blade Secure Admin
+</h1>
 
+<p style={{
+  color: "#aaa",
+  textAlign: "center"
+}}>
+  Ingreso con correo empresarial
+</p>
+<input
+  type="email"
+  placeholder="Correo administrador"
+  value={email}
+  onChange={(e) => setEmail(e.target.value)}
+  style={{
+    padding: 16,
+    borderRadius: 12,
+    border: "1px solid #333",
+    background: "#27272a",
+    color: "white"
+  }}
+/>
         <input
           type="password"
           placeholder="Contraseña"
@@ -315,11 +338,11 @@ return (
         </button>
 
         <button
-  onClick={() => {
+  onClick={async () => {
 
-    localStorage.removeItem("logged");
+    await supabase.auth.signOut();
 
-    setLogged(false);
+setLogged(false);
 
   }}
   className="bg-red-600 text-white p-3 rounded-xl font-bold"
