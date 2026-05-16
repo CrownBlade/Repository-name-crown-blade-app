@@ -28,7 +28,9 @@ export default function ClientePage() {
 }, []);
   const [client, setClient] = useState<any>(null);
   const [error, setError] = useState("");
-
+const [history, setHistory] = useState<any[]>([]);
+const [reservationDate, setReservationDate] = useState("");
+const [reservationMessage, setReservationMessage] = useState("");
   async function searchClient() {
     const { data } = await supabase
       .from("clients")
@@ -44,8 +46,47 @@ export default function ClientePage() {
 
     setError("");
     setClient(data);
+    const { data: historyData } = await supabase
+  .from("history")
+  .select("*")
+  .eq("client_id", data.id)
+  .order("created_at", { ascending: false });
+
+if (historyData) {
+  setHistory(historyData);
+}
+  }
+async function createReservation() {
+
+  if (!client || !reservationDate) {
+    alert("Selecciona una fecha");
+    return;
   }
 
+  const { error } = await supabase
+    .from("reservations")
+    .insert([
+      {
+        client_id: client.id,
+        name: client.name,
+        phone: client.phone,
+        date: reservationDate,
+        status: "pendiente"
+      }
+    ]);
+
+  if (error) {
+    alert("Error al reservar");
+    return;
+  }
+
+  setReservationMessage("✅ Reserva solicitada correctamente");
+  setReservationDate("");
+
+  setTimeout(() => {
+    setReservationMessage("");
+  }, 3000);
+}
   return (
     <main className="min-h-screen bg-black text-white p-6 flex flex-col items-center">
 
@@ -106,11 +147,66 @@ export default function ClientePage() {
               </p>
             )}
 
-            {client.points >= 10 && (
+                        {client.points >= 10 && (
               <p className="text-yellow-400 font-bold">
                 🏆 Servicio Deluxe desbloqueado
               </p>
             )}
+<div className="mt-6 flex flex-col gap-3">
+
+  <h3 className="text-xl font-bold">
+    Reservar cita
+  </h3>
+
+  <input
+    type="date"
+    value={reservationDate}
+    onChange={(e) => setReservationDate(e.target.value)}
+    className="p-4 rounded-xl bg-zinc-800 border border-zinc-700"
+  />
+
+  <button
+    onClick={createReservation}
+    className="bg-blue-600 text-white p-4 rounded-xl font-bold"
+  >
+    Solicitar Reserva
+  </button>
+
+  {reservationMessage && (
+    <div className="text-green-400 text-center">
+      {reservationMessage}
+    </div>
+  )}
+
+</div>
+<div className="mt-6">
+  <h3 className="text-xl font-bold mb-3">
+    Historial Reciente
+  </h3>
+
+  <div className="flex flex-col gap-3">
+
+    {history.slice(0, 5).map((item) => (
+
+      <div
+        key={item.id}
+        className="bg-zinc-800 p-3 rounded-xl"
+      >
+
+        <p className="text-yellow-400 font-bold">
+          +{item.points} punto
+        </p>
+
+        <p className="text-zinc-400 text-sm">
+          {new Date(item.created_at).toLocaleString()}
+        </p>
+
+      </div>
+
+    ))}
+
+  </div>
+</div>
 
           </div>
         )}

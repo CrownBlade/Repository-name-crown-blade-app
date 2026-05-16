@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { supabase } from "../lib/supabase";
+import { QRCodeCanvas } from "qrcode.react";
 
 export default function Home() {
 
@@ -19,6 +20,7 @@ export default function Home() {
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
   const [history, setHistory] = useState<any[]>([]);
+  const [reservations, setReservations] = useState<any[]>([]);
   const [email, setEmail] = useState("");
 const [password, setPassword] = useState("");
 const [logged, setLogged] = useState(false);
@@ -143,6 +145,7 @@ async function editClient(client: any) {
 
   getClients();
 getHistory();
+getReservations();
 }
 async function getHistory() {
 
@@ -156,7 +159,18 @@ async function getHistory() {
   }
 
 }
+async function getReservations() {
 
+  const { data } = await supabase
+    .from("reservations")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (data) {
+    setReservations(data);
+  }
+
+}
 async function login() {
 
   const { error } = await supabase.auth.signInWithPassword({
@@ -186,6 +200,7 @@ useEffect(() => {
 
   getClients();
   getHistory();
+getReservations();
 
 }, []);
 
@@ -504,8 +519,40 @@ setLogged(false);
                   Eliminar
                 </div>
 
-              </button>
+</button>
 
+<div className="bg-white p-4 rounded-xl flex justify-center mt-4">
+  <QRCodeCanvas
+  value={`https://repository-name-crown-blade-app.vercel.app/cliente?phone=${client.phone}`}
+  size={150}
+  bgColor={"#FFFFFF"}
+  fgColor={"#000000"}
+/>
+</div>
+<a
+  href={`https://wa.me/51${client.phone.replace(/\D/g, "").slice(-9)}?text=Consulta%20tus%20puntos%20en%20Crown%20%26%20Blade:%20https://repository-name-crown-blade-app.vercel.app/cliente?phone=${client.phone}`}
+  target="_blank"
+  className="bg-green-500 text-white p-3 rounded-xl font-bold text-center mt-4 block"
+>
+  Compartir por WhatsApp
+</a>
+
+<button
+  onClick={() => {
+    const canvas = document.querySelector("canvas");
+    const url = canvas?.toDataURL("image/png");
+
+    if (url) {
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${client.name}-qr.png`;
+      link.click();
+    }
+  }}
+  className="bg-blue-600 text-white p-3 rounded-xl font-bold text-center mt-3 w-full"
+>
+  Descargar QR
+</button>
             </div>
 
           </div>
@@ -550,7 +597,44 @@ setLogged(false);
     ))}
 
   </div>
+<div className="mt-16">
 
+  <h2 className="text-3xl font-bold mb-6">
+    Reservas Pendientes
+  </h2>
+
+  <div className="flex flex-col gap-4">
+
+    {reservations.map((reservation) => (
+
+      <div
+        key={reservation.id}
+        className="bg-zinc-900 p-4 rounded-xl border border-zinc-800"
+      >
+
+        <p className="text-white font-bold">
+          {reservation.name}
+        </p>
+
+        <p className="text-zinc-400">
+          📞 {reservation.phone}
+        </p>
+
+        <p className="text-blue-400">
+          📅 {reservation.date}
+        </p>
+
+        <p className="text-yellow-400 font-bold">
+          Estado: {reservation.status}
+        </p>
+
+      </div>
+
+    ))}
+
+  </div>
+
+</div>
 </div>
 
     </div>
