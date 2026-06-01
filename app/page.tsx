@@ -21,6 +21,104 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [history, setHistory] = useState<any[]>([]);
   const [reservations, setReservations] = useState<any[]>([]);
+  const today = new Date()
+  .toISOString()
+  .split("T")[0];
+
+const todayReservations =
+  reservations.filter(
+    (r) =>
+      r.date.startsWith(
+        today
+      )
+  );
+
+const pendingToday =
+  todayReservations.filter(
+    (r) =>
+      r.status ===
+      "pendiente"
+  );
+
+const confirmedToday =
+  todayReservations.filter(
+    (r) =>
+      r.status ===
+      "confirmado"
+  );
+  const completedReservations =
+  reservations.filter(
+    (r) =>
+      r.status ===
+      "completado"
+  );
+
+const pendingReservations =
+  reservations.filter(
+    (r) =>
+      r.status ===
+      "pendiente"
+  );
+
+const confirmedReservations =
+  reservations.filter(
+    (r) =>
+      r.status ===
+      "confirmado"
+  );
+
+const cancelledReservations =
+  reservations.filter(
+    (r) =>
+      r.status ===
+      "cancelado"
+  );
+  const attendanceRate =
+  completedReservations.length +
+    cancelledReservations.length >
+  0
+    ? Math.round(
+        (
+          completedReservations.length /
+          (
+            completedReservations.length +
+            cancelledReservations.length
+          )
+        ) * 100
+      )
+    : 0;
+    const completedByClient =
+  completedReservations.reduce(
+    (acc: any, reservation: any) => {
+
+      acc[reservation.client_id] =
+        (acc[reservation.client_id] || 0) + 1;
+
+      return acc;
+
+    },
+    {}
+  );
+
+const topCompletedClientId =
+  Object.keys(completedByClient).length > 0
+    ? Object.keys(
+        completedByClient
+      ).reduce((a, b) =>
+        completedByClient[a] >
+        completedByClient[b]
+          ? a
+          : b
+      )
+    : null;
+
+const topCompletedClient =
+  clients.find(
+    (client) =>
+      client.id ==
+      topCompletedClientId
+  );
+  const [selectedDate, setSelectedDate] = useState("");
   const [email, setEmail] = useState("");
 const [password, setPassword] = useState("");
 const [logged, setLogged] = useState(false);
@@ -74,7 +172,7 @@ async function getClients() {
   .insert([
     {
       name,
-      phone,
+      phone: phone.replace(/\D/g, "").slice(-9),
       points: 0
     }
   ]);
@@ -306,6 +404,133 @@ return (
 
     <div className="max-w-xl mx-auto">
 
+<div className="bg-zinc-900 p-6 rounded-2xl mb-8">
+
+  <h2 className="text-3xl font-bold mb-6">
+    📅 Resumen de Hoy
+  </h2>
+
+  <div className="grid grid-cols-3 gap-4">
+
+    <div className="bg-zinc-800 p-4 rounded-xl text-center">
+      <p className="text-zinc-400">
+        Citas
+      </p>
+      <p className="text-3xl font-bold">
+        {todayReservations.length}
+      </p>
+    </div>
+
+    <div className="bg-yellow-600 p-4 rounded-xl text-center">
+      <p>Pendientes</p>
+      <p className="text-3xl font-bold">
+        {pendingToday.length}
+      </p>
+    </div>
+
+    <div className="bg-green-600 p-4 rounded-xl text-center">
+      <p>Confirmadas</p>
+      <p className="text-3xl font-bold">
+        {confirmedToday.length}
+      </p>
+    </div>
+
+  </div>
+
+</div>
+<div className="bg-zinc-900 p-6 rounded-2xl mb-8">
+
+  <h2 className="text-3xl font-bold mb-6">
+    📊 Estadísticas Generales
+  </h2>
+
+  <div className="grid grid-cols-2 gap-4">
+
+    <div className="bg-zinc-800 p-4 rounded-xl">
+      Clientes: {clients.length}
+    </div>
+
+    <div className="bg-zinc-800 p-4 rounded-xl">
+      Reservas: {reservations.length}
+    </div>
+
+    <div className="bg-green-600 p-4 rounded-xl">
+      Completadas: {completedReservations.length}
+    </div>
+
+    <div className="bg-yellow-600 p-4 rounded-xl">
+      Confirmadas: {confirmedReservations.length}
+    </div>
+
+    <div className="bg-orange-600 p-4 rounded-xl">
+      Pendientes: {pendingReservations.length}
+    </div>
+
+    <div className="bg-red-600 p-4 rounded-xl">
+      Canceladas: {cancelledReservations.length}
+    </div>
+<div className="bg-blue-600 p-4 rounded-xl col-span-2">
+  Asistencia: {attendanceRate}%
+</div>
+
+<div className="bg-purple-600 p-4 rounded-xl col-span-2">
+  🏆 Cliente más activo:
+  {" "}
+  {topCompletedClient?.name ||
+    "Sin datos"}
+</div>
+
+  </div>
+
+</div>
+<div className="bg-zinc-900 p-6 rounded-2xl mb-8">
+
+  <h2 className="text-3xl font-bold mb-6">
+    📅 Agenda de Hoy
+  </h2>
+
+  <div className="flex flex-col gap-4">
+
+    {todayReservations.length === 0 && (
+
+      <div className="text-zinc-400">
+        No hay citas para hoy
+      </div>
+
+    )}
+
+    {todayReservations.map((reservation) => (
+
+      <div
+        key={reservation.id}
+        className="bg-zinc-800 p-4 rounded-xl"
+      >
+
+        <p className="text-blue-400 font-bold">
+          {reservation.date.split("|")[1]?.trim()}
+        </p>
+
+        <p className="text-white font-bold mt-1">
+          {reservation.name}
+        </p>
+
+        <p
+          className={
+            reservation.status === "confirmado"
+              ? "text-green-400"
+              : "text-yellow-400"
+          }
+        >
+          {reservation.status}
+        </p>
+
+      </div>
+
+    ))}
+
+  </div>
+
+</div>
       <div className="flex flex-col items-center mb-10">
 
         <Image
@@ -600,12 +825,37 @@ setLogged(false);
 <div className="mt-16">
 
   <h2 className="text-3xl font-bold mb-6">
-    Reservas Pendientes
-  </h2>
-
+  📅 Agenda Activa
+</h2>
+<input
+  type="date"
+  value={selectedDate}
+  onChange={(e) => setSelectedDate(e.target.value)}
+  className="p-4 rounded-xl bg-zinc-800 border border-zinc-700 w-full mb-6"
+/>
   <div className="flex flex-col gap-4">
 
-    {reservations.map((reservation) => (
+    {reservations
+  .filter((reservation) => {
+
+    const dateMatch =
+      selectedDate
+        ? reservation.date.startsWith(
+            selectedDate
+          )
+        : true;
+
+    const visibleStatus =
+      reservation.status !== "completado" &&
+      reservation.status !== "cancelado";
+
+    return (
+      dateMatch &&
+      visibleStatus
+    );
+
+  })
+  .map((reservation) => (
 
       <div
         key={reservation.id}
@@ -623,17 +873,125 @@ setLogged(false);
         <p className="text-blue-400">
           📅 {reservation.date}
         </p>
+<a
+  href={`https://wa.me/51${reservation.phone.replace(/\D/g, "").slice(-9)}?text=Hola%20${reservation.name}%20👋%20Te%20recordamos%20tu%20cita%20en%20Crown%20%26%20Blade.%20📅%20${reservation.date}`}
+  target="_blank"
+  className="bg-green-600 p-3 rounded-xl text-center font-bold block mt-4"
+>
 
+Enviar Recordatorio
+
+</a>
         <p className="text-yellow-400 font-bold">
           Estado: {reservation.status}
         </p>
+<div className="flex gap-3 mt-4">
 
+  <button
+    onClick={async () => {
+
+      await supabase
+        .from("reservations")
+        .update({ status: "confirmado" })
+        .eq("id", reservation.id);
+
+      getReservations();
+
+    }}
+    className="bg-green-600 p-3 rounded-xl font-bold"
+  >
+    Confirmar
+  </button>
+
+<button
+  onClick={async () => {
+
+    await supabase
+      .from("reservations")
+      .update({
+        status: "completado"
+      })
+      .eq(
+        "id",
+        reservation.id
+      );
+
+    getReservations();
+
+  }}
+  className="bg-blue-600 p-3 rounded-xl font-bold"
+>
+  Completado
+</button>
+
+  <button
+    onClick={async () => {
+
+      await supabase
+        .from("reservations")
+        .update({ status: "cancelado" })
+        .eq("id", reservation.id);
+
+      getReservations();
+
+    }}
+    className="bg-red-600 p-3 rounded-xl font-bold"
+  >
+    Cancelar
+  </button>
+
+</div>
       </div>
 
     ))}
 
   </div>
+<div className="mt-16">
 
+  <h2 className="text-3xl font-bold mb-6">
+    📚 Historial de Servicios
+  </h2>
+
+  <div className="flex flex-col gap-4">
+
+    {reservations
+      .filter(
+        (reservation) =>
+          reservation.status === "completado" ||
+          reservation.status === "cancelado"
+      )
+      .map((reservation) => (
+
+        <div
+          key={reservation.id}
+          className="bg-zinc-900 p-4 rounded-xl border border-zinc-800"
+        >
+
+          <p className="text-white font-bold">
+            {reservation.name}
+          </p>
+
+          <p className="text-blue-400">
+            📅 {reservation.date}
+          </p>
+
+          <p
+            className={
+              reservation.status === "completado"
+                ? "text-blue-400 font-bold"
+                : "text-red-400 font-bold"
+            }
+          >
+            {reservation.status}
+          </p>
+
+        </div>
+
+      ))}
+
+  </div>
+
+</div>
 </div>
 </div>
 
