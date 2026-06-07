@@ -11,6 +11,8 @@ import {
 import Image from "next/image";
 import { supabase } from "../lib/supabase";
 import { QRCodeCanvas } from "qrcode.react";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 export default function Home() {
 
@@ -118,7 +120,146 @@ const topCompletedClient =
       client.id ==
       topCompletedClientId
   );
+  const currentMonth =
+  new Date().getMonth();
+
+const currentYear =
+  new Date().getFullYear();
+
+const monthlyReservations =
+  reservations.filter(
+    (r) => {
+
+      const date =
+        new Date(
+          r.date
+            .split("|")[0]
+            .trim()
+        );
+
+      return (
+        date.getMonth() ===
+          currentMonth &&
+        date.getFullYear() ===
+          currentYear
+      );
+
+    }
+  );
+
+const monthlyCompleted =
+  monthlyReservations.filter(
+    (r) =>
+      r.status ===
+      "completado"
+  );
+
+const monthlyCancelled =
+  monthlyReservations.filter(
+    (r) =>
+      r.status ===
+      "cancelado"
+  );
+
+const monthlyPending =
+  monthlyReservations.filter(
+    (r) =>
+      r.status ===
+      "pendiente"
+  );
+  const now = new Date();
+
+const firstDayOfWeek =
+  new Date(now);
+
+firstDayOfWeek.setDate(
+  now.getDate() -
+    now.getDay()
+);
+
+firstDayOfWeek.setHours(
+  0,
+  0,
+  0,
+  0
+);
+
+const lastDayOfWeek =
+  new Date(
+    firstDayOfWeek
+  );
+
+lastDayOfWeek.setDate(
+  firstDayOfWeek.getDate() +
+    6
+);
+
+lastDayOfWeek.setHours(
+  23,
+  59,
+  59,
+  999
+);
+
+const weeklyReservations =
+  reservations.filter(
+    (r) => {
+
+      const date =
+        new Date(
+          r.date
+            .split("|")[0]
+            .trim()
+        );
+
+      return (
+        date >=
+          firstDayOfWeek &&
+        date <=
+          lastDayOfWeek
+      );
+
+    }
+  );
+
+const weeklyCompleted =
+  weeklyReservations.filter(
+    (r) =>
+      r.status ===
+      "completado"
+  );
+
+const weeklyCancelled =
+  weeklyReservations.filter(
+    (r) =>
+      r.status ===
+      "cancelado"
+  );
+
+const weeklyPending =
+  weeklyReservations.filter(
+    (r) =>
+      r.status ===
+      "pendiente"
+  );
+
+const weeklyAttendance =
+  weeklyCompleted.length +
+    weeklyCancelled.length >
+  0
+    ? Math.round(
+        (
+          weeklyCompleted.length /
+          (
+            weeklyCompleted.length +
+            weeklyCancelled.length
+          )
+        ) * 100
+      )
+    : 0;
+
   const [selectedDate, setSelectedDate] = useState("");
+  const [reservationSearch, setReservationSearch] = useState("");
   const [email, setEmail] = useState("");
 const [password, setPassword] = useState("");
 const [logged, setLogged] = useState(false);
@@ -291,18 +432,152 @@ async function login() {
 useEffect(() => {
 
   supabase.auth.getSession().then(({ data }) => {
-  if (data.session) {
-    setLogged(true);
-  }
-});
+    if (data.session) {
+      setLogged(true);
+    }
+  });
 
   getClients();
   getHistory();
-getReservations();
+  getReservations();
 
 }, []);
 
-  if (!logged) {
+function exportBackup() {
+
+  const clientsData =
+  clients.map(
+    (client) => ({
+
+      Nombre:
+        client.name,
+
+      Telefono:
+        client.phone,
+
+      Puntos:
+        client.points
+
+    })
+  );
+
+const reservationsData =
+  reservations.map(
+    (reservation) => ({
+
+      Cliente:
+        reservation.name,
+
+      Telefono:
+        reservation.phone,
+
+      Fecha:
+        reservation.date,
+
+      Estado:
+        reservation.status
+
+    })
+  );
+
+const historyData =
+  history.map(
+    (item) => {
+
+      const client =
+        clients.find(
+          (c) =>
+            c.id ===
+            item.client_id
+        );
+
+      return {
+
+        Cliente:
+          client?.name ||
+          "Desconocido",
+
+        Telefono:
+          client?.phone ||
+          "",
+
+        Puntos:
+          item.points,
+
+        Fecha:
+          item.created_at
+
+      };
+
+    }
+  );
+
+  const clientsSheet =
+  XLSX.utils.json_to_sheet(
+    clientsData
+  );
+
+const reservationsSheet =
+  XLSX.utils.json_to_sheet(
+    reservationsData
+  );
+
+const historySheet =
+  XLSX.utils.json_to_sheet(
+    historyData
+  );
+
+  const workbook =
+    XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+  workbook,
+  clientsSheet,
+  "Clientes"
+);
+
+XLSX.utils.book_append_sheet(
+  workbook,
+  reservationsSheet,
+  "Reservas"
+);
+
+XLSX.utils.book_append_sheet(
+  workbook,
+  historySheet,
+  "Historial"
+);
+
+  const excelBuffer =
+    XLSX.write(
+      workbook,
+      {
+        bookType: "xlsx",
+        type: "array"
+      }
+    );
+
+  const file =
+    new Blob(
+      [excelBuffer],
+      {
+        type:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8"
+      }
+    );
+
+  saveAs(
+  file,
+  `crown-blade-backup-${
+    new Date()
+      .toISOString()
+      .split("T")[0]
+  }.xlsx`
+);
+
+}
+
+if (!logged) {
 
   return (
 
@@ -479,7 +754,74 @@ return (
   {topCompletedClient?.name ||
     "Sin datos"}
 </div>
+<div className="bg-zinc-800 p-4 rounded-xl col-span-2">
 
+  <h3 className="font-bold text-lg mb-3">
+    📈 Este Mes
+  </h3>
+
+  <p>
+    Reservas:
+    {" "}
+    {monthlyReservations.length}
+  </p>
+
+  <p>
+    Completadas:
+    {" "}
+    {monthlyCompleted.length}
+  </p>
+
+  <p>
+    Canceladas:
+    {" "}
+    {monthlyCancelled.length}
+  </p>
+
+  <p>
+    Pendientes:
+    {" "}
+    {monthlyPending.length}
+  </p>
+
+</div>
+<div className="bg-zinc-800 p-4 rounded-xl col-span-2">
+
+  <h3 className="font-bold text-lg mb-3">
+    📆 Esta Semana
+  </h3>
+
+  <p>
+    Reservas:
+    {" "}
+    {weeklyReservations.length}
+  </p>
+
+  <p>
+    Completadas:
+    {" "}
+    {weeklyCompleted.length}
+  </p>
+
+  <p>
+    Canceladas:
+    {" "}
+    {weeklyCancelled.length}
+  </p>
+
+  <p>
+    Pendientes:
+    {" "}
+    {weeklyPending.length}
+  </p>
+
+  <p className="mt-2 font-bold text-green-400">
+    Asistencia:
+    {" "}
+    {weeklyAttendance}%
+  </p>
+
+</div>
   </div>
 
 </div>
@@ -576,6 +918,12 @@ return (
         >
           Crear Cliente
         </button>
+<button
+  onClick={exportBackup}
+  className="bg-green-600 text-white p-4 rounded-xl font-bold"
+>
+  📥 Respaldo Completo
+</button>
 
         <button
   onClick={async () => {
@@ -827,6 +1175,19 @@ setLogged(false);
   <h2 className="text-3xl font-bold mb-6">
   📅 Agenda Activa
 </h2>
+
+<input
+  type="text"
+  placeholder="🔎 Buscar cliente o teléfono..."
+  value={reservationSearch}
+  onChange={(e) =>
+    setReservationSearch(
+      e.target.value
+    )
+  }
+  className="p-4 rounded-xl bg-zinc-800 border border-zinc-700 w-full mb-4"
+/>
+
 <input
   type="date"
   value={selectedDate}
@@ -845,16 +1206,54 @@ setLogged(false);
           )
         : true;
 
-    const visibleStatus =
-      reservation.status !== "completado" &&
-      reservation.status !== "cancelado";
+    const searchText =
+  reservationSearch
+    .replace(/\s+/g, "")
+    .toLowerCase();
 
-    return (
-      dateMatch &&
-      visibleStatus
-    );
+const reservationName =
+  (reservation.name || "")
+    .replace(/\s+/g, "")
+    .toLowerCase();
 
-  })
+const reservationPhone =
+  (reservation.phone || "")
+    .replace(/\D/g, "");
+
+const searchPhone =
+  reservationSearch
+    .replace(/\D/g, "");
+
+const searchMatch =
+
+  searchText === ""
+    ? true
+    : (
+        reservationName.includes(
+          searchText
+        ) ||
+
+        (
+          searchPhone !== "" &&
+          reservationPhone.includes(
+            searchPhone
+          )
+        )
+      );
+
+const visibleStatus =
+  reservation.status !==
+    "completado" &&
+  reservation.status !==
+    "cancelado";
+
+return (
+  dateMatch &&
+  searchMatch &&
+  visibleStatus
+);
+
+})
   .map((reservation) => (
 
       <div

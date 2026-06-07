@@ -17,6 +17,17 @@ export default function ClientePage() {
   const [reservationDate, setReservationDate] = useState("");
   const [reservationHour, setReservationHour] = useState("");
   const [reservationMessage, setReservationMessage] = useState("");
+useEffect(() => {
+
+  if (client) {
+
+    loadData(
+      client.id
+    );
+
+  }
+
+}, [reservationDate]);
 
   useEffect(() => {
 
@@ -100,9 +111,10 @@ const hours = reservationData
 ?.filter((r) => {
 
 const sameDate =
-r.date.startsWith(
-reservationDate
-);
+  reservationDate &&
+  r.date.startsWith(
+    reservationDate
+  );
 
 const active =
 r.status !==
@@ -353,6 +365,7 @@ e.target.value
 setReservationHour(
 ""
 );
+
 
 }}
   className="p-4 rounded-xl bg-zinc-800"
